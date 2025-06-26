@@ -1,26 +1,21 @@
 import os
 import tempfile
 import streamlit as st
-from langchain_openai import ChatOpenAI
 from openai import OpenAI
 from dotenv import load_dotenv
 from langchain_community.document_loaders import TextLoader, PyPDFLoader, Docx2txtLoader
 
-# 初始化ChatOpenAI模型
-model = ChatOpenAI(
-    base_url='https://api.deepseek.com/',
-    model='deepseek-reasoner',
-    temperature=0,
-    api_key=st.secrets["OPENAI_API_KEY"]  # 修改为使用st.secrets
+# 加载环境变量
+load_dotenv()
+
+# 初始化OpenAI客户端
+client = OpenAI(
+    base_url='https://api.deepseek.com',
+    api_key=os.getenv("OPENAI_API_KEY")  # 使用os.getenv获取API密钥
 )
 
 def get_answer(question: str, strict_file_mode: bool = False):
     try:
-        client = OpenAI(
-            base_url='https://api.deepseek.com',
-            api_key=st.secrets["OPENAI_API_KEY"]  # 修改为使用st.secrets
-        )
-
         messages = []
         for role, content in st.session_state['messages'][:-1]:
             messages.append({
@@ -31,8 +26,11 @@ def get_answer(question: str, strict_file_mode: bool = False):
         messages.append({'role': 'user', 'content': question})
 
         if strict_file_mode and st.session_state['file_content']:
-            messages[-1][
-                'content'] = f"请严格根据以下文件内容回答问题，如果文件内容中没有相关信息，请回答'根据文件内容无法回答该问题':\n\n文件内容:\n{st.session_state['file_content']}\n\n问题:{question}"
+            messages[-1]['content'] = (
+                f"请严格根据以下文件内容回答问题，如果文件内容中没有相关信息，请回答'根据文件内容无法回答该问题':\n\n"
+                f"文件内容:\n{st.session_state['file_content']}\n\n"
+                f"问题:{question}"
+            )
 
         response = client.chat.completions.create(
             model='deepseek-reasoner',
@@ -45,7 +43,6 @@ def get_answer(question: str, strict_file_mode: bool = False):
     except Exception as err:
         print(err)
         return '暂时无法提供回复，请检查你的配置是否正确'
-
 
 def load_file(uploaded_file):
     file_type = uploaded_file.name.split('.')[-1].lower()
@@ -80,7 +77,6 @@ def load_file(uploaded_file):
                 os.unlink(tmp_file_path)
             except:
                 pass
-
 
 # 初始化会话状态
 if 'messages' not in st.session_state:
@@ -168,3 +164,6 @@ if user_input:
         )
         st.chat_message('ai').write(answer)
         st.session_state['messages'].append(('ai', answer))
+
+
+
