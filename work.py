@@ -6,19 +6,22 @@ from openai import OpenAI
 from dotenv import load_dotenv
 from langchain_community.document_loaders import TextLoader, PyPDFLoader, Docx2txtLoader
 
+# 加载 .env 文件
+load_dotenv()
+
 # 初始化ChatOpenAI模型
 model = ChatOpenAI(
     base_url='https://api.deepseek.com/',
     model='deepseek-reasoner',
     temperature=0,
-    api_key=st.secrets["OPENAI_API_KEY"]  # 修改为使用st.secrets
+    api_key=st.secrets["API_KEY"]  # 修改为使用st.secrets
 )
 
 def get_answer(question: str, strict_file_mode: bool = False):
     try:
         client = OpenAI(
             base_url='https://api.deepseek.com',
-            api_key=st.secrets["OPENAI_API_KEY"]  # 修改为使用st.secrets
+            api_key=st.secrets["API_KEY"]  # 修改为使用st.secrets
         )
 
         messages = []
@@ -31,8 +34,11 @@ def get_answer(question: str, strict_file_mode: bool = False):
         messages.append({'role': 'user', 'content': question})
 
         if strict_file_mode and st.session_state['file_content']:
-            messages[-1][
-                'content'] = f"请严格根据以下文件内容回答问题，如果文件内容中没有相关信息，请回答'根据文件内容无法回答该问题':\n\n文件内容:\n{st.session_state['file_content']}\n\n问题:{question}"
+            messages[-1]['content'] = (
+                f"请严格根据以下文件内容回答问题，如果文件内容中没有相关信息，请回答'根据文件内容无法回答该问题':\n\n"
+                f"文件内容:\n{st.session_state['file_content']}\n\n"
+                f"问题:{question}"
+            )
 
         response = client.chat.completions.create(
             model='deepseek-reasoner',
@@ -145,7 +151,6 @@ with st.sidebar:
                 if st.button('🗑️', key=f"del_{idx}", type="secondary"):
                     # 删除指定对话
                     del st.session_state['messages'][len(st.session_state['messages']) - 1 - idx]
-                    del st.session_state['messages'][len(st.session_state['messages']) - 1 - idx]
                     st.rerun()
 
 # 显示历史对话
@@ -153,7 +158,7 @@ for idx, (role, content) in enumerate(st.session_state['messages']):
     message_container = st.container()
     with message_container:
         st.chat_message(role).write(content)
-        st.markdown(f'<a name="{len(st.session_state["messages"]) - idx - 1}"></a>', unsafe_allow_html=True)
+        st.markdown(f'<a name="{idx}"></a>', unsafe_allow_html=True)
 
 # 用户输入
 user_input = st.chat_input(placeholder='遇事不决，问百晓生')
@@ -168,3 +173,6 @@ if user_input:
         )
         st.chat_message('ai').write(answer)
         st.session_state['messages'].append(('ai', answer))
+
+
+
